@@ -35,11 +35,25 @@ enum Piece_Index : unsigned int {
     BLACK_KING = 11
 };
 
+enum Direction_Index : unsigned int {
+    NO = 0,
+    EA = 1,
+    SO = 2,
+    WE = 3,
+    NE = 4,
+    SE = 5,
+    SW = 6,
+    NW = 7
+};
+
+
+void print_bitboard(uint64_t bitboard);
 
 class Board {
     private:
         uint64_t bitboards[12];
         uint64_t rank_masks[8];
+        uint64_t sliding_moves[64][8];
     public:
         Board();
         static uint64_t coordinates_to_bitmask(int file, int rank);
@@ -50,7 +64,7 @@ class Board {
 };
 
 Board::Board() {
-    bitboards[WHITE_PAWN] = 0xFF00;
+    bitboards[WHITE_PAWN] = 0xFF00ULL;
     bitboards[WHITE_ROOK] = 0x81;
     bitboards[WHITE_KNIGHT] = 0x42;
     bitboards[WHITE_BISHOP] = 0x24;
@@ -72,6 +86,108 @@ Board::Board() {
         rank_masks[i] = initial_rank << (i * 8);
     }
 
+    uint64_t north_ray = 0x0101010101010100ULL;
+    for (int i = 0; i < 64; i++) {
+        sliding_moves[i][NO] = north_ray;
+        north_ray <<= 1;
+    }
+
+    uint64_t east_ray = 0xFE00000000000000ULL;
+    for (int file = 0; file < 8; file++) {
+        for (int rank = 0; rank < 8; rank++) {
+            sliding_moves[file + 8*rank][EA] = east_ray >> ((7 - rank) * 8);
+        }
+        east_ray <<= 1;
+    }
+
+    uint64_t northeast_ray = 0x8040201008040200ULL;
+    uint64_t no_a_file_mask = 0xFEFEFEFEFEFEFEFEULL; // also ~north_ray 
+    for (int file = 0; file < 8; file++) {
+        northeast_ray &= no_a_file_mask; // take care of wrapping
+        for (int rank = 0; rank < 8; rank++) {
+            sliding_moves[file + 8*rank][NE] = northeast_ray << (rank * 8);
+        }
+        northeast_ray <<= 1;
+    }
+
+    uint64_t northwest_ray = 0x0102040810204000ULL;
+    uint64_t no_h_file_mask = 0x7F7F7F7F7F7F7F7FULL;
+    for (int file = 7; file >= 0; file--) {
+        northwest_ray &= no_h_file_mask;
+        for (int rank = 0; rank < 8; rank++) {
+            sliding_moves[file + 8*rank][NW] = northwest_ray << (rank * 8);
+        }
+        northwest_ray >>= 1;
+    }
+
+    uint64_t south_ray = 0x0080808080808080ULL;
+    for (int i = 63; i >= 0; i--) {
+        sliding_moves[i][SO] = south_ray;
+        south_ray >>= 1;
+    }
+
+    uint64_t west_ray = 0x000000000000007FULL;
+    for (int file = 7; file >= 0; file--) {
+        for (int rank = 0; rank < 8; rank++) {
+            sliding_moves[file + 8*rank][WE] = west_ray << (rank * 8);
+        }
+        west_ray >>= 1;
+    }
+
+    uint64_t southeast_ray = 0x0002040810204080ULL;
+    for (int file = 0; file < 8; file++) {
+        southeast_ray &= no_a_file_mask;
+        for (int rank = 7; rank >= 0; rank--) {
+            sliding_moves[file + 8*rank][SE] = southeast_ray >> ((7 - rank) * 8);
+        }
+        southeast_ray <<= 1;
+    }
+
+    uint64_t southwest_ray = 0x008040201008040201ULL;
+    for (int file = 7; file >= 0; file--) {
+        southwest_ray &= no_h_file_mask;
+        for (int rank = 7; rank >= 0; rank--) {
+            sliding_moves[file + 8*rank][SW] = southwest_ray >> ((7 - rank) * 8);
+        }
+        southwest_ray >>= 1;
+    }
+
+    for (int i = 0; i < 12; i++) {
+        print_bitboard(bitboards[i]);
+        printf("\n");
+    }
+
+    for (int i = 0; i < 64; i++) {
+//      printf("north:\n");
+//      print_bitboard(sliding_moves[i][NO]);
+//      printf("\n");
+//      printf("northeast:\n");
+//      print_bitboard(sliding_moves[i][NE]);
+//      printf("\n");
+//      printf("east:\n");
+//      print_bitboard(sliding_moves[i][EA]);
+//      printf("\n");
+//      printf("northwest:\n");
+//      print_bitboard(sliding_moves[i][NW]);
+//      printf("\n");
+//      printf("south:\n");
+//      print_bitboard(sliding_moves[i][SO]);
+//      printf("\n");
+//      printf("southwest:\n");
+//      print_bitboard(sliding_moves[i][SW]);
+//      printf("\n");
+        printf("southeast:\n");
+        print_bitboard(sliding_moves[i][SE]);
+        printf("\n");
+//      printf("west:\n");
+//      print_bitboard(sliding_moves[i][WE]);
+//      printf("\n");
+    }
+
+
+
+    
+
 }
 
 
@@ -91,34 +207,6 @@ uint64_t Board::coordinates_to_bitmask(int file, int rank) {
 
 }
 
-uint64_t Board::get_pawn_moves(bool is_white) {
-    uint64_t pawn_moves;
-    if (is_white) {
-        pawn_moves = bitboards[WHITE_PAWN] << 8;
-    }
-    else {
-        pawn_moves = bitboards[WHITE_PAWN] >> 8;
-    }
-
-    return pawn_moves;
-}
-
-uint64_t Board::get_rook_moves(bool is_white) {
-    uint64_t rook_moves = 0;
-    Piece_Index rook_color = is_white ? WHITE_ROOK : BLACK_ROOK;
-    for (int i = 1; i <= 7; i++) {
-        rook_moves |= bitboards[rook_color] << i;
-        rook_moves |= bitboards[rook_color] >> i;
-    }
-
-    for (int i = 0; i < 8; i++) {
-        // if a rook is on this rank, add the rank to the
-        // potential moves excluding the square the rook is on
-        if (bitboards[rook_color] & rank_masks[i]) {
-            rook_moves |= (bitboards[rook_color] ^ rank_masks[i]);
-        }
-    }
-}
 
 
 
@@ -145,6 +233,28 @@ void test_piece_positions() {
     assert((Board::coordinates_to_bitmask(4, 8)) == chessboard.get_piece(BLACK_QUEEN));
     assert((Board::coordinates_to_bitmask(5, 8)) == chessboard.get_piece(BLACK_KING));
 }
+
+void print_bitboard(uint64_t bitboard) {
+    uint64_t mask = 0x0100000000000000ULL;
+
+    for (int rank = 0; rank < 8; rank++) {
+        uint64_t mask0 = (mask >> (8 * rank));
+        for (int file = 0; file < 8; file++) {
+            uint64_t mask1 = (mask0 << file);
+
+            if (mask1 & bitboard) {
+                printf("1");
+            }
+            else {
+                printf("0");
+            }
+            printf(" ");
+        }
+
+        printf("\n");
+    }
+}
+
 
 int main(int argc, char *argv[]) {
     Board chessboard;
