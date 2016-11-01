@@ -152,12 +152,12 @@ Board::Board() {
         southwest_ray >>= 1;
     }
 
-    for (int i = 0; i < 12; i++) {
-        print_bitboard(bitboards[i]);
-        printf("\n");
-    }
+//  for (int i = 0; i < 12; i++) {
+//      print_bitboard(bitboards[i]);
+//      printf("\n");
+//  }
 
-    for (int i = 0; i < 64; i++) {
+//  for (int i = 0; i < 64; i++) {
 //      printf("north:\n");
 //      print_bitboard(sliding_moves[i][NO]);
 //      printf("\n");
@@ -173,18 +173,20 @@ Board::Board() {
 //      printf("south:\n");
 //      print_bitboard(sliding_moves[i][SO]);
 //      printf("\n");
-//      printf("southwest:\n");
+//      printf("southwest: %d\n", i);
 //      print_bitboard(sliding_moves[i][SW]);
 //      printf("\n");
-        printf("southeast:\n");
-        print_bitboard(sliding_moves[i][SE]);
-        printf("\n");
+//      printf("southeast:\n");
+//      print_bitboard(sliding_moves[i][SE]);
+//      printf("\n");
 //      printf("west:\n");
 //      print_bitboard(sliding_moves[i][WE]);
 //      printf("\n");
-    }
+//  }
 
 
+    printf("bitscan of white pawns: %d\n", __builtin_ffsll(bitboards[WHITE_PAWN]));
+    printf("bitscan backward of black pawns: %d\n", 64 - __builtin_clzll(bitboards[BLACK_PAWN]));
 
     
 
@@ -206,6 +208,50 @@ uint64_t Board::coordinates_to_bitmask(int file, int rank) {
     return bitmask;
 
 }
+
+bool Board::check_move(Piece_Index piece, uint64_t destination) {
+    switch(piece) {
+        case WHITE_BISHOP:
+        case BLACK_BISHOP:
+            return bishop_move(bool is_white, destination);
+            break;
+        case WHITE_ROOK:
+        case BLACK_ROOK:
+            return rook_move(bool is_white, destination);
+            break;
+        default:
+            break;
+    }
+}
+
+int Board::get_index(uint64_t bitboard, int n) {
+    int index;
+    if (n == 1) {
+        index = __builtin_ffsll(bitboard); // least significant 1 bit + 1
+        return index - 1;
+    }
+    if (n == 2) {
+        index = __builtin_clzll(bitboard); // number of leading zeros 
+        return 63 - index;
+    }
+}
+    
+
+
+uint64_t Board::get_rook_moves(bool is_white, uint64_t destination) {
+    if (is_white) {
+        int bit_index = get_index(bitboards[WHITE_ROOK], 1);
+        uint64_t possible_moves = 0ULL;
+        uint64_t intersection = sliding_moves[bit_index][NO] & bitboards[ALL_BLACK];
+        int blocking_index = __builtin_ffsll(intersection) - 1;
+        possible_moves |= (sliding_moves[blocking_index][NO] ^ sliding_moves[bit_index][NO]);
+
+    }
+}
+
+
+
+
 
 
 
