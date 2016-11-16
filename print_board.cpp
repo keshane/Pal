@@ -38,8 +38,7 @@ int main(int argc, char *argv[]) {
 
 void parse_positions(char *notation) {
     char *n = notation;
-    // might overflow buffer...
-    // but argv will always contain null-terminated strings
+    
     print_board_top();
     while (*n != '\0') {
         if (std::isdigit(*n)) {
