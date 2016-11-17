@@ -254,22 +254,26 @@ int Board::get_index(uint64_t bitboard, int n) {
  * @return a bitmap of all possible places the rook can move to
  */
 uint64_t Board::get_rook_moves(bool is_white, int n) {
-    Piece_Index own_color, opponent_color;
+    Piece_Index own_piece, own_color, opponent_color;
     if (is_white) {
-        own_color = WHITE_ROOK;
+        own_piece = WHITE_ROOK;
+        own_color = ALL_WHITE;
         opponent_color = ALL_BLACK;
     }
     else {
-        own_color = BLACK_ROOK;
+        own_piece = BLACK_ROOK;
+        own_color = ALL_BLACK;
         opponent_color = ALL_WHITE;
     }
 
-    int bit_index = get_index(bitboards[own_color], n);
+    int bit_index = get_index(bitboards[own_piece], n);
     uint64_t possible_moves = 0ULL;
 
     // Moves to the north
+    uint64_t same_color_intersection = sliding_moves[bit_index][NO] & bitboards[own_color];
+    int blocking_index = __builtin_ffsll(same_color_intersection) - 1;
+    uint64_t bounded_moves = sliding_moves[bit_index][NO] ^ (sliding_moves[blocking_index][NO] & (1ULL << (blocking_index - 1));
     uint64_t intersection = sliding_moves[bit_index][NO] & bitboards[opponent_color];
-    int blocking_index = __builtin_ffsll(intersection) - 1;
     possible_moves |= (sliding_moves[blocking_index][NO] ^ sliding_moves[bit_index][NO]);
 
     // Moves to the east
@@ -296,18 +300,18 @@ uint64_t Board::get_rook_moves(bool is_white, int n) {
  *
  * @return a bitmap of all possible places the bishop can move to
  */
-uint64_t Board::get_rook_moves(bool is_white, int n) {
-    Piece_Index own_color, opponent_color;
+uint64_t Board::get_bishop_moves(bool is_white, int n) {
+    Piece_Index own_piece, opponent_color;
     if (is_white) {
-        own_color = WHITE_BISHOP;
+        own_piece = WHITE_BISHOP;
         opponent_color = ALL_BLACK;
     }
     else {
-        own_color = BLACK_BISHOP;
+        own_piece = BLACK_BISHOP;
         opponent_color = ALL_WHITE;
     }
 
-    int bit_index = get_index(bitboards[own_color], n);
+    int bit_index = get_index(bitboards[own_piece], n);
     uint64_t possible_moves = 0ULL;
 
     // Moves to the northeast
@@ -332,7 +336,67 @@ uint64_t Board::get_rook_moves(bool is_white, int n) {
 
 }
 
+/**
+ * @param is_white true for white, false for black
+ *
+ * @return a bitmap of all possible places the queen can move to
+ */
+uint64_t Board::get_queen_moves(bool is_white) {
+    Piece_Index own_piece, opponent_color;
+    if (is_white) {
+        own_piece = WHITE_QUEEN;
+        opponent_color = ALL_BLACK;
+    }
+    else {
+        own_piece = BLACK_QUEEN;
+        opponent_color = ALL_WHITE;
+    }
 
+    int bit_index = get_index(bitboards[own_piece], n);
+    uint64_t possible_moves = 0ULL;
+
+    // Moves to the north
+    uint64_t intersection = sliding_moves[bit_index][NO] & bitboards[opponent_color];
+    int blocking_index = __builtin_ffsll(intersection) - 1;
+    possible_moves |= (sliding_moves[blocking_index][NO] ^ sliding_moves[bit_index][NO]);
+
+    // Moves to the east
+    intersection = sliding_moves[bit_index][EA] & bitboards[opponent_color];
+    blocking_index = __builtin_ffsll(intersection) - 1;
+    possible_moves |= (sliding_moves[blocking_index][EA] ^ sliding_moves[bit_index][EA]);
+
+    // Moves to the south 
+    intersection = sliding_moves[bit_index][SO] & bitboards[opponent_color];
+    blocking_index = 63 - __builtin_clzll(intersection);
+    possible_moves |= (sliding_moves[blocking_index][SO] ^ sliding_moves[bit_index][SO]);
+
+    // Moves to the west 
+    intersection = sliding_moves[bit_index][WE] & bitboards[opponent_color];
+    blocking_index = 63 - __builtin_clzll(intersection);
+    possible_moves |= (sliding_moves[blocking_index][WE] ^ sliding_moves[bit_index][WE]);
+
+
+    // Moves to the northeast
+    intersection = sliding_moves[bit_index][NE] & bitboards[opponent_color];
+    blocking_index = __builtin_ffsll(intersection) - 1;
+    possible_moves |= (sliding_moves[blocking_index][NE] ^ sliding_moves[bit_index][NE]);
+
+    // Moves to the northwest 
+    intersection = sliding_moves[bit_index][NW] & bitboards[opponent_color];
+    blocking_index = __builtin_ffsll(intersection) - 1;
+    possible_moves |= (sliding_moves[blocking_index][NW] ^ sliding_moves[bit_index][NW]);
+
+    // Moves to the southeast
+    intersection = sliding_moves[bit_index][SE] & bitboards[opponent_color];
+    blocking_index = 63 - __builtin_clzll(intersection);
+    possible_moves |= (sliding_moves[blocking_index][SE] ^ sliding_moves[bit_index][SE]);
+
+    // Moves to the southwest 
+    intersection = sliding_moves[bit_index][SW] & bitboards[opponent_color];
+    blocking_index = 63 - __builtin_clzll(intersection);
+    possible_moves |= (sliding_moves[blocking_index][SW] ^ sliding_moves[bit_index][SW]);
+
+}
 
 
 
