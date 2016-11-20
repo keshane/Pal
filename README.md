@@ -1,9 +1,9 @@
 # Pal
 Chess engine in C++
 
-*P*layers  
-*a*re  
-*l*osers
+**P**layers  
+**a**re  
+**l**osers
 
 This is my attempt at creating a chess engine that I can play against.
 I'm using the bitboard technique found [here](https://chessprogramming.wikispaces.com/Bitboards).
